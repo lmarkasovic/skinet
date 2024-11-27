@@ -1,3 +1,4 @@
+using API.RequestHelpers;
 using Core.Entities;
 using Core.Interfaces;
 using Core.Specifications;
@@ -11,22 +12,27 @@ public class ProductsController(IGenericRepository<Product> repo) : ControllerBa
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<Product>>> GetProducts(
-        string ? brand, string? type, string? sort)
+        [FromQuery]ProductSpecParams specParams)
     {
-        var spec = new ProductSpecification(brand, type, sort);
+        var spec = new ProductSpecification(specParams);
         var products = await repo.ListAsync(spec);
-        return Ok(products);
+        var count = await repo.CountAsync(spec);
+        var pagination = new Pagination<Product>(
+            specParams.PageIndex, specParams.PageSize, count, products);
+        return Ok(pagination);
     }
 
     [HttpGet("{id:int}")] // api/products/2
-    public async Task<ActionResult<Product>> GetProduct(int id){
+    public async Task<ActionResult<Product>> GetProduct(int id)
+    {
             var product = await repo.GetByIdAsync(id);
             if (product == null) return NotFound();
             return product;
     }
 
     [HttpPost]
-    public async Task<ActionResult<Product>> CreateProduct(Product product){
+    public async Task<ActionResult<Product>> CreateProduct(Product product)
+    {
         repo.Add(product);
         if (await repo.SaveAllAsync()){
             return CreatedAtAction("GetProduct", new {id = product.Id}, product);
@@ -35,7 +41,8 @@ public class ProductsController(IGenericRepository<Product> repo) : ControllerBa
     }
 
     [HttpPut("{id:int}")]
-    public async Task<ActionResult> UpdateProduct(int id, Product product){
+    public async Task<ActionResult> UpdateProduct(int id, Product product)
+    {
         if (product.Id != id || !ProductExists(id))
             return BadRequest("Cannot update this product");
 
@@ -48,7 +55,8 @@ public class ProductsController(IGenericRepository<Product> repo) : ControllerBa
     }
 
     [HttpDelete("{id:int}")]
-    public async Task<ActionResult> DeleteProduct(int id){
+    public async Task<ActionResult> DeleteProduct(int id)
+    {
         var product=await repo.GetByIdAsync(id);
 
         if (product == null) return NotFound();
